@@ -11,6 +11,22 @@ export interface Recipe {
   imageUrl?: string;
 }
 
+export interface MealPlanDay {
+  day: string;
+  breakfast: string;
+  lunch: string;
+  dinner: string;
+  snack: string;
+}
+
+export interface MealPlan {
+  id: string;
+  title: string;
+  goal: string;
+  days: MealPlanDay[];
+  createdDate: string;
+}
+
 export interface FoodItem {
   name: string;
   ph: number;
@@ -27,5 +43,6 @@ export enum AppView {
   Home = 'home',
   Recipes = 'recipes',
   Guide = 'guide',
-  AIAssistant = 'ai-assistant'
+  AIAssistant = 'ai-assistant',
+  Plans = 'plans'
 }
