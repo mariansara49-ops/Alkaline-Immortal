@@ -1,0 +1,7 @@
+{
+  "name": "Alkaline Immortal",
+  "description": "An AI-powered alkaline vegan companion designed for biological rejuvenation, featuring recipe generation, healing food guides, and health-optimizing meal plans.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
