@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AppView, Recipe, ChatMessage, MealPlan } from './types';
+import { AppView, Recipe, ChatMessage, MealPlan, FoodItem } from './types';
 import { PRESET_RECIPES, ALKALINE_FOODS, Icons } from './constants';
 import { geminiService } from './services/geminiService';
 
@@ -144,6 +144,71 @@ const RecipeModal: React.FC<{ recipe: Recipe; onClose: () => void; isFavorite: b
   </div>
 );
 
+const FoodDetailModal: React.FC<{ food: FoodItem; onClose: () => void }> = ({ food, onClose }) => {
+  const [insight, setInsight] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let active = true;
+    geminiService.getFoodInsight(food.name).then(res => {
+      if (active) {
+        setInsight(res);
+        setLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [food.name]);
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="p-8 space-y-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest block mb-1">{food.category}</span>
+              <h2 className="text-3xl font-bold text-slate-900">{food.name}</h2>
+            </div>
+            <div className="bg-emerald-50 text-emerald-700 w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg border border-emerald-100">
+              {food.ph.toFixed(1)}
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Immediate Benefits</h4>
+            <p className="text-slate-700 text-sm leading-relaxed">{food.benefits}</p>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+              <Icons.Bolt />
+              Biological Deep Scan
+            </h4>
+            {loading ? (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-4 bg-slate-100 rounded-full w-full"></div>
+                <div className="h-4 bg-slate-100 rounded-full w-5/6"></div>
+                <div className="h-4 bg-slate-100 rounded-full w-4/6"></div>
+              </div>
+            ) : (
+              <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap italic">
+                {insight}
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={onClose}
+            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-colors"
+          >
+            Close Scanner
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MealPlanModal: React.FC<{ plan: MealPlan; onClose: () => void }> = ({ plan, onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
@@ -241,6 +306,7 @@ const App: React.FC = () => {
   const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlan | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -328,7 +394,7 @@ const App: React.FC = () => {
   const handleGenerateMealPlan = async (goal: string) => {
     setIsGenerating(true);
     try {
-      const newPlan = await geminiService.generateMealPlan(goal, "Prioritize longevity and genetic repair.");
+      const newPlan = await geminiService.generateMealPlan(goal, "Prioritize longevity and genetic repair.", recipes);
       setMealPlans(prev => [newPlan, ...prev]);
       setSelectedMealPlan(newPlan);
       setView(AppView.Plans);
@@ -350,6 +416,10 @@ const App: React.FC = () => {
           isFavorite={isRecipeFavorite(selectedRecipe.id)}
           onToggleFavorite={toggleFavorite}
         />
+      )}
+
+      {selectedFood && (
+        <FoodDetailModal food={selectedFood} onClose={() => setSelectedFood(null)} />
       )}
 
       {selectedMealPlan && (
@@ -510,7 +580,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
             <header>
               <h2 className="text-4xl font-bold text-slate-900">The pH Matrix</h2>
-              <p className="text-slate-500 mt-2">A scanner for biological rechargers.</p>
+              <p className="text-slate-500 mt-2">A scanner for biological rechargers. Click an element to deep-scan its essence.</p>
             </header>
             <div className="bg-white rounded-[3rem] border border-emerald-50 overflow-hidden shadow-sm p-6">
               <input 
@@ -518,23 +588,31 @@ const App: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search elements..."
-                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 mb-6"
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
               />
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="text-slate-400 text-xs uppercase tracking-widest border-b">
-                      <th className="pb-4">Element</th>
-                      <th className="pb-4">pH</th>
-                      <th className="pb-4">Vitality Core</th>
+                    <tr className="text-slate-400 text-[10px] uppercase tracking-widest border-b">
+                      <th className="pb-4 px-2">Element</th>
+                      <th className="pb-4 px-2">pH</th>
+                      <th className="pb-4 px-2">Vitality Core</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredFoods.map(food => (
-                      <tr key={food.name} className="border-b last:border-0 hover:bg-emerald-50/30 transition-colors">
-                        <td className="py-4 font-bold text-slate-800">{food.name}</td>
-                        <td className="py-4"><span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold">{food.ph}</span></td>
-                        <td className="py-4 text-sm text-slate-500">{food.benefits}</td>
+                      <tr 
+                        key={food.name} 
+                        onClick={() => setSelectedFood(food)}
+                        className="border-b last:border-0 hover:bg-emerald-50/50 transition-colors cursor-pointer group"
+                      >
+                        <td className="py-5 px-2 font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">{food.name}</td>
+                        <td className="py-5 px-2">
+                          <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-100">
+                            {food.ph.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-5 px-2 text-sm text-slate-500 leading-relaxed">{food.benefits}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -564,13 +642,13 @@ const App: React.FC = () => {
               {chatHistory.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] px-6 py-4 rounded-[2rem] text-sm leading-relaxed ${
-                    msg.role === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-700 border border-slate-100'
+                    msg.role === 'user' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-100'
                   }`}>
                     {msg.content}
                   </div>
                 </div>
               ))}
-              {isGenerating && <div className="text-emerald-400 text-xs animate-pulse">Consulting the higher logic...</div>}
+              {isGenerating && <div className="text-emerald-400 text-xs animate-pulse font-medium px-4">Consulting the higher logic...</div>}
             </div>
 
             <div className="relative group">
@@ -585,7 +663,7 @@ const App: React.FC = () => {
               <button 
                 onClick={handleSendMessage}
                 disabled={isGenerating || !input.trim()}
-                className="absolute right-3 top-3 bottom-3 bg-emerald-600 text-white px-6 rounded-[1.5rem] font-bold"
+                className="absolute right-3 top-3 bottom-3 bg-emerald-600 text-white px-6 rounded-[1.5rem] font-bold hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
               >
                 Send
               </button>

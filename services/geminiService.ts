@@ -94,28 +94,37 @@ Strictly follow the provided JSON schema.`,
     }
   }
 
-  async generateMealPlan(goal: string, preferences: string): Promise<MealPlan> {
+  async generateMealPlan(goal: string, preferences: string, availableRecipes: Recipe[]): Promise<MealPlan> {
+    const recipeNames = availableRecipes.map(r => r.name).join(", ");
+    
     const response = await this.ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Design a 7-day personalized Alkaline Vegan Meal Plan.
+      contents: `Design a highly cohesive 7-day personalized Alkaline Vegan Meal Plan protocol.
 Goal: ${goal}
 Preferences: ${preferences}
 
-Ensure every day has a breakfast, lunch, dinner, and snack. All meals must be strictly alkaline-forming.
-Theme the plan around biological immortality and cellular reset.`,
+Available Alchemical Recipes in the system: [${recipeNames}]
+
+INSTRUCTIONS:
+1. RELEVANCE: For each meal (Breakfast, Lunch, Dinner, Snack), try to integrate the specific recipe names listed above if they fit the goal. 
+2. COHESION: If an existing recipe doesn't fit, invent a new high-alkaline meal name that sounds consistent with the "Biological Immortality" theme.
+3. STRATEGY: Ensure the plan follows a logical progression of detoxification and cellular reset.
+4. PURITY: All suggested meals must be strictly alkaline-forming (no hybrids, no starch-heavy acids).
+
+Return a structured JSON protocol following the schema.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING, description: "Inspiring protocol title" },
+            title: { type: Type.STRING, description: "Evocative protocol title (e.g., 'The Telomere Reset Matrix')" },
             goal: { type: Type.STRING },
             days: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  day: { type: Type.STRING },
+                  day: { type: Type.STRING, description: "e.g. Day 1: Initiation" },
                   breakfast: { type: Type.STRING },
                   lunch: { type: Type.STRING },
                   dinner: { type: Type.STRING },
@@ -145,9 +154,23 @@ Theme the plan around biological immortality and cellular reset.`,
   async getAlkalineInsight(query: string): Promise<string> {
     const response = await this.ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Act as a high-level biological advisor. Explain the alkaline vegan perspective on: "${query}". Keep it visionary and encouraging.`,
+      contents: `Act as a high-level biological advisor for the Immortalist community. Explain the alkaline vegan perspective on: "${query}". 
+Key pillars: cellular pH balance, reversing biological aging, eliminating mucus, and DNA repair. 
+Maintain a tone that is scientific, visionary, and encouraging.`,
     });
     return response.text || "The matrix is recalibrating.";
+  }
+
+  async getFoodInsight(foodName: string): Promise<string> {
+    const response = await this.ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `As an Alchemist of Longevity, provide a deep insight into the element: "${foodName}". 
+1. Explain its cellular rejuvenation properties (e.g., DNA repair, mitochondrial support).
+2. Detail its specific high-alkaline benefits for biological immortality.
+3. Provide 2-3 "Alchemical Preparation" tips to maximize its pH-balancing power.
+Maintain a visionary, scientific, and inspiring tone. Keep it under 200 words.`,
+    });
+    return response.text || "Scanning cellular data... The essence of this element is currently obscured.";
   }
 }
 
